@@ -1,0 +1,21 @@
+{
+  "name": "arya",
+  "version": "0.0.0-development",
+  "main": "js/index.js",
+  "scripts": {
+    "build": "tsconfig-v && tsc"
+  },
+  "bin": {
+    "arya": "js/index.js"
+  },
+  "dependencies": {
+    "minimist": "^1.2.0",
+    "shelljs": "^0.7.5"
+  },
+  "devDependencies": {
+    "@types/minimist": "^1.1.29",
+    "@types/node": "0.0.2",
+    "@types/shelljs": "^0.3.33",
+    "tsconfig-v": "^1.0.1"
+  }
+}
