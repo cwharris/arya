@@ -9,6 +9,7 @@
     "arya": "js/index.js"
   },
   "dependencies": {
+    "dotnet": "^1.1.3",
     "minimist": "^1.2.0",
     "shelljs": "^0.7.5"
   },
