@@ -1,7 +1,12 @@
+import * as _ from "lodash";
 import * as fs from "fs";
 import * as path from "path";
+import * as shelljs from "shelljs";
+
+import { DirectionalGraph } from "./DirectionalGraph";
 
 export interface IProject {
+    filepath: string;
     name: string;
     version: string;
     dependencies: Array<IDependency>;
@@ -13,10 +18,41 @@ export interface IDependency {
 }
 
 export async function build(projectFilespaths: Array<string>): Promise<void> {
-    let projectFileContents = await Promise.all(projectFilespaths.map(loadFile));
-    let projectJsons = projectFileContents.map(x => JSON.parse(x));
-    let projectSettings = zipWith<string, any, IProject>(projectFilespaths, projectJsons, parseProjectSetting);
-    console.log(projectSettings);
+    const projectFileContents = await Promise.all(projectFilespaths.map(loadFile));
+    const projectJsons = projectFileContents.map(x => JSON.parse(x));
+    const projects = zipWith<string, any, IProject>(projectFilespaths, projectJsons, parseProjectSetting);
+    const dependencies = _.flatMap(
+        projects,
+        project => project.dependencies.map(dependency => ({
+            from: project.name,
+            to: dependency.name
+        })));
+    
+    var graph = DirectionalGraph.fromEdges(dependencies);
+
+    while (graph.edges.length > 0) {
+        await buildProjects(graph.tailNodes, projects);
+        graph = DirectionalGraph.withoutNodes(graph, graph.tailNodes);
+    }
+
+    await buildProjects(graph.headNodes, projects);
+}
+
+async function buildProjects(names: Array<string>, projects: Array<IProject>): Promise<void> {
+
+    var projectsToBuild = projects
+        .filter(project => names.indexOf(project.name))
+        .map(buildProject);
+
+    await Promise.all(projectsToBuild);
+}
+
+async function buildProject(project: IProject): Promise<boolean> {
+    return new Promise<boolean>(resolve => {
+        shelljs.exec(`dotnet build ${project.filepath}`, code => {
+            resolve(code === 0);
+        });
+    });
 }
 
 function zipWith<T1, T2, TR>(ax: T1[], bx: T2[], selector: (a: T1, b: T2) => TR): Array<TR> {
@@ -59,6 +95,7 @@ function parseProjectSetting(filepath: string, json: any): IProject {
     }
 
     return {
+        filepath: filepath,
         name: path.basename(path.dirname(filepath)),
         version: json.version,
         dependencies: dependencies
